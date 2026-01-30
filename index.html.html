@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Stock & Split (Lengkap)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb; /* Biru (Sisa Stock) */
+            --success: #16a34a; /* Hijau (Uang) */
+            --warning: #f59e0b; /* Kuning (Pending) */
+            --purple: #9333ea;  /* Ungu (Total Terpakai) */
+            --danger: #dc2626;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-sub: #64748b;
+        }
+
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        /* HEADER */
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid var(--border); }
+        h1 { margin: 0; font-size: 1.5rem; }
+        .btn-reset { background: #fee2e2; border: 1px solid var(--danger); color: var(--danger); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
+
+        /* DASHBOARD - KINI 4 KOLOM */
+        .dashboard-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+            gap: 15px; 
+            margin-bottom: 25px; 
+        }
+
+        .card { background: var(--card); padding: 20px; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .card-label { font-size: 0.8rem; font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-value { font-size: 2rem; font-weight: 700; margin-top: 5px; }
+        
+        .val-stock { color: var(--primary); }
+        .val-used { color: var(--purple); }
+        .val-money { color: var(--success); }
+        .val-pending { color: var(--warning); }
+
+        /* INPUT AREA (PRODUKSI) */
+        .input-area { background: #eff6ff; border: 1px solid #bfdbfe; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 15px; align-items: end; }
+        @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+        
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; box-sizing: border-box; }
+        
+        button.btn-add { width: 100%; padding: 12px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        button.btn-add:hover { background: #1d4ed8; }
+
+        /* TABLE */
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 10px; }
+        th { background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid var(--border); color: var(--text-sub); font-size: 0.8rem; text-transform: uppercase; }
+        td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        
+        /* STATUS BADGES */
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+        .badge-pending { background: #fef3c7; color: #d97706; }
+        .badge-done { background: #dcfce7; color: #15803d; }
+
+        /* ADMIN ACTION */
+        .btn-split { background: var(--success); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.8rem; }
+        .btn-delete { background: transparent; color: #94a3b8; border: none; cursor: pointer; margin-left: 10px; font-size: 1.2rem; }
+        .btn-delete:hover { color: var(--danger); }
+
+        /* MODALS */
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 999; }
+        .modal-box { background: white; padding: 25px; border-radius: 12px; width: 350px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+
+<div id="setupOverlay" class="overlay" style="display: flex;">
+    <div class="modal-box">
+        <h2 style="margin-top:0">⚙️ Setup Stock Awal</h2>
+        <div class="form-group" style="margin-bottom:10px;"><label>Tanggal Stock</label><input type="date" id="initDate"></div>
+        <div class="form-group" style="margin-bottom:10px;"><label>Jumlah Stock (Roll)</label><input type="number" id="initQty"></div>
+        <div class="form-group" style="margin-bottom:20px;"><label>Harga Modal / Roll</label><input type="number" id="initPrice"></div>
+        <button class="btn-add" onclick="saveSetup()">Simpan & Mulai</button>
+    </div>
+</div>
+
+<div id="adminOverlay" class="overlay">
+    <div class="modal-box">
+        <h2 style="margin-top:0">Input Split Uang</h2>
+        <p style="font-size:0.9rem; color:#666">Admin mengkonfirmasi pemakaian ini.</p>
+        <div class="form-group" style="margin-bottom:20px;">
+            <label>Tanggal Split Uang</label>
+            <input type="date" id="modalSplitDate">
+        </div>
+        <input type="hidden" id="modalTrxId">
+        <div style="display:flex; gap:10px;">
+            <button class="btn-add" style="background:#ccc; color:#333" onclick="closeAdminModal()">Batal</button>
+            <button class="btn-add" style="background:var(--success)" onclick="confirmSplit()">Konfirmasi</button>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <header>
+        <h1>Monitoring Stock dan Split Kertas Sublim</h1>
+        <button class="btn-reset" onclick="resetAll()">🔄 Reset Data</button>
+    </header>
+
+    <div class="dashboard-grid">
+        <div class="card" style="border-top: 4px solid var(--primary);">
+            <div class="card-label">Sisa Stock</div>
+            <div class="card-value val-stock" id="dispSisaStock">0</div>
+            <div style="font-size:0.8rem; color:#666">Roll Tersedia</div>
+        </div>
+
+        <div class="card" style="border-top: 4px solid var(--purple);">
+            <div class="card-label">Total Terpakai</div>
+            <div class="card-value val-used" id="dispTotalUsed">0</div>
+            <div style="font-size:0.8rem; color:#666">Roll Habis</div>
+        </div>
+        
+        <div class="card" style="border-top: 4px solid var(--warning);">
+            <div class="card-label">⚠️ Menunggu Split</div>
+            <div class="card-value val-pending" id="dispPendingCount">0</div>
+            <div style="font-size:0.8rem; color:#666">Transaksi Pending</div>
+        </div>
+
+        <div class="card" style="border-top: 4px solid var(--success);">
+            <div class="card-label">Total Split Uang</div>
+            <div class="card-value val-money" id="dispTotalSplit">Rp 0</div>
+            <div style="font-size:0.8rem; color:#666">Sudah Terkumpul</div>
+        </div>
+    </div>
+
+    <div class="card input-area">
+        <h3 style="margin-top:0; color:var(--primary); margin-bottom:10px;">Input Produksi (Potong Stock)</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Tanggal Kertas Terpakai</label>
+                <input type="date" id="useDate">
+            </div>
+            <div class="form-group">
+                <label>Jumlah Roll</label>
+                <input type="number" id="useQty" step="0.1" placeholder="Misal: 1 atau 0.5">
+            </div>
+            <button class="btn-add" onclick="addProduction()">Potong Stock</button>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+        <h3 style="margin-top:0; margin-bottom:15px;">Daftar Transaksi & Split (Admin)</h3>
+        <div style="overflow-x:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tgl Pakai</th>
+                        <th>Terpakai</th>
+                        <th>Status Split</th>
+                        <th>Split Uang</th>
+                        <th>Tgl Split</th>
+                        <th style="text-align:right">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const KEY = 'sublim_workflow_v6_full';
+    let data = { setup: null, logs: [] };
+
+    // --- INIT ---
+    function init() {
+        const stored = localStorage.getItem(KEY);
+        if(stored) {
+            data = JSON.parse(stored);
+            document.getElementById('setupOverlay').style.display = 'none';
+            render();
+        } else {
+            document.getElementById('initDate').valueAsDate = new Date();
+        }
+        document.getElementById('useDate').valueAsDate = new Date();
+    }
+
+    // --- SETUP ---
+    function saveSetup() {
+        const d = document.getElementById('initDate').value;
+        const q = parseFloat(document.getElementById('initQty').value);
+        const p = parseFloat(document.getElementById('initPrice').value);
+        if(!d || !q || !p) return alert("Lengkapi data!");
+        
+        data.setup = { date: d, qty: q, price: p };
+        data.logs = [];
+        save();
+        document.getElementById('setupOverlay').style.display = 'none';
+        render();
+    }
+
+    // --- PRODUKSI ---
+    function addProduction() {
+        const dUse = document.getElementById('useDate').value;
+        const q = parseFloat(document.getElementById('useQty').value);
+        
+        if(!dUse || !q) return alert("Lengkapi input produksi!");
+
+        data.logs.push({
+            id: Date.now(),
+            useDate: dUse,
+            qty: q,
+            status: 'pending', 
+            splitDate: null,   
+            splitAmount: q * data.setup.price 
+        });
+
+        document.getElementById('useQty').value = '';
+        save();
+        render();
+    }
+
+    // --- ADMIN ---
+    function openAdminModal(id) {
+        document.getElementById('modalTrxId').value = id;
+        document.getElementById('modalSplitDate').valueAsDate = new Date();
+        document.getElementById('adminOverlay').style.display = 'flex';
+    }
+
+    function closeAdminModal() {
+        document.getElementById('adminOverlay').style.display = 'none';
+    }
+
+    function confirmSplit() {
+        const id = parseInt(document.getElementById('modalTrxId').value);
+        const dSplit = document.getElementById('modalSplitDate').value;
+        
+        if(!dSplit) return alert("Masukkan Tanggal Split!");
+
+        const log = data.logs.find(x => x.id === id);
+        if(log) {
+            log.status = 'done';
+            log.splitDate = dSplit;
+            save();
+            render();
+            closeAdminModal();
+        }
+    }
+
+    // --- UTILS ---
+    function deleteTrx(id) {
+        if(confirm("Hapus data ini?")) {
+            data.logs = data.logs.filter(x => x.id !== id);
+            save();
+            render();
+        }
+    }
+    function resetAll() {
+        if(confirm("Reset semua data?")) { localStorage.removeItem(KEY); location.reload(); }
+    }
+
+    // --- RENDER ---
+    function render() {
+        if(!data.setup) return;
+
+        let totalUsed = 0;      // Ini yang akan ditampilkan di card baru
+        let totalSplitDone = 0; 
+        let pendingCount = 0;
+        let html = '';
+
+        const sorted = [...data.logs].sort((a,b) => b.id - a.id);
+
+        sorted.forEach(log => {
+            totalUsed += log.qty; // Menghitung TOTAL TERPAKAI (baik status pending maupun done)
+
+            let statusBadge = '';
+            let actionBtn = '';
+            let splitDateDisplay = '-';
+            let splitAmountClass = 'color:#999';
+
+            if(log.status === 'pending') {
+                pendingCount++;
+                statusBadge = '<span class="badge badge-pending">Belum Split</span>';
+                actionBtn = `<button class="btn-split" onclick="openAdminModal(${log.id})">✅ Input Split</button>`;
+            } else {
+                totalSplitDone += log.splitAmount;
+                statusBadge = '<span class="badge badge-done">Sudah Split</span>';
+                splitDateDisplay = `<b>${formatDate(log.splitDate)}</b>`;
+                splitAmountClass = 'color:var(--success); font-weight:bold;';
+            }
+
+            html += `
+                <tr>
+                    <td>${formatDate(log.useDate)}</td>
+                    <td>${formatNum(log.qty)} Roll</td>
+                    <td>${statusBadge}</td>
+                    <td style="${splitAmountClass}">${formatRupiah(log.splitAmount)}</td>
+                    <td>${splitDateDisplay}</td>
+                    <td style="text-align:right">
+                        ${actionBtn}
+                        <button class="btn-delete" onclick="deleteTrx(${log.id})">&times;</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('tableBody').innerHTML = html || '<tr><td colspan="6" style="text-align:center; padding:20px; color:#999">Belum ada pemakaian</td></tr>';
+
+        // Update Dashboard
+        const sisa = data.setup.qty - totalUsed;
+        
+        document.getElementById('dispSisaStock').innerText = formatNum(sisa); // Sisa
+        document.getElementById('dispTotalUsed').innerText = formatNum(totalUsed); // BARU: Total Terpakai
+        document.getElementById('dispTotalSplit').innerText = formatRupiah(totalSplitDone); // Uang
+        document.getElementById('dispPendingCount').innerText = pendingCount + " Transaksi";
+    }
+
+    // Helpers
+    function save() { localStorage.setItem(KEY, JSON.stringify(data)); }
+    function formatRupiah(n) { return new Intl.NumberFormat('id-ID', {style:'currency', currency:'IDR', minimumFractionDigits:0}).format(n); }
+    function formatDate(s) { return s ? new Date(s).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'}) : '-'; }
+    function formatNum(n) { return parseFloat(n.toFixed(2)); }
+
+    init();
+</script>
+
+</body>
+</html>
